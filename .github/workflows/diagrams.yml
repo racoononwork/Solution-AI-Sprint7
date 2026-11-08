@@ -1,0 +1,27 @@
+name: diagrams
+
+on:
+  push:
+    paths: ["**/diagrams/*.puml", ".github/workflows/diagrams.yml"]
+  pull_request:
+    paths: ["**/diagrams/*.puml", ".github/workflows/diagrams.yml"]
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render PlantUML to SVG
+        run: |
+          docker run --rm -v "$PWD:/data" -w /data plantuml/plantuml:1.2025.4 \
+            -tsvg -failfast2 "Task*/diagrams/*.puml"
+      - name: Fail if committed SVGs are stale
+        run: |
+          git diff --exit-code -- '*.svg' || {
+            echo "::error::SVG устарели. Пересоберите: plantuml -tsvg Task*/diagrams/*.puml"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: diagrams
+          path: Task*/diagrams/*.svg

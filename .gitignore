@@ -1,0 +1,6 @@
+plantuml.jar
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log

@@ -1,0 +1,37 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+
+title C4 Component — сервис скоринга
+
+Container_Ext(features, "Хранилище признаков", "Версионированный снимок")
+Container_Ext(registry, "Реестр моделей", "Одобренная версия")
+Container_Ext(policy, "Политика очереди", "Детерминированные правила")
+Container_Ext(monitoring, "Наблюдаемость", "Метрики и аудит")
+
+Boundary(scoring, "Сервис скоринга", "Граница обработки ответа модели") {
+  Component(consumer, "Batch Consumer", "Обычный код", "Читает пакет, повторяет ошибки, обеспечивает идемпотентность")
+  Component(inputValidation, "Input Validator", "Обычный код", "JSON Schema, обязательные поля, свежесть и диапазоны")
+  Component(assembler, "Feature Assembler", "Обычный код", "Совмещает операцию и снимок без утечки будущего")
+  Component(model, "Model Inference", "ML-модель", "Вычисляет относительный score приоритетности")
+  Component(normalizer, "Priority Normalizer", "Обычный код", "Сопоставляет score с диапазоном 0–100 внутри пакета")
+  Component(abstention, "Abstention & Fallback", "Обычный код", "Неизвестный сегмент, OOD, недоступность и низкая уверенность")
+  Component(reasons, "Reason Mapper", "Обычный код", "Преобразует вклад признаков в разрешённые reason_codes")
+  Component(outputValidation, "Output Validator", "Обычный код", "Проверяет схему, ссылки и диапазоны до передачи")
+  Component(audit, "Audit Writer", "Обычный код", "Версии, идентификаторы и причина fallback")
+}
+
+Rel(consumer, inputValidation, "Событие операции")
+Rel(inputValidation, assembler, "Валидная операция")
+Rel(features, assembler, "[TB2] Признаки и cutoff")
+Rel(registry, model, "[TB4] Закреплённая модель")
+Rel(assembler, model, "Вектор признаков")
+Rel(model, normalizer, "Сырой score")
+Rel(normalizer, abstention, "Score и диагностика")
+Rel(abstention, reasons, "Score либо fallback_code")
+Rel(reasons, outputValidation, "Черновой контракт")
+Rel(outputValidation, policy, "[TB3] Валидный результат; нет бизнес-действия")
+Rel(outputValidation, audit, "Версии и идентификаторы")
+Rel(audit, monitoring, "[TB5] Метрики без назначения платежа")
+
+@enduml
